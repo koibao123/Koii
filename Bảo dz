@@ -8,11 +8,9 @@ local backpack = player:WaitForChild("Backpack")
 local leaderstats = player:WaitForChild("leaderstats")
 local screenGui = Instance.new("ScreenGui")
 screenGui.Parent = player.PlayerGui
-
--- Biến kiểm soát hiển thị FPS và menu
-local showFPS = true
+local espActive = false
 local menuVisible = false
-local antiBanActive = true -- Kích hoạt tính năng chống cấm
+local showFPS = true  -- Biến kiểm soát hiển thị FPS
 
 -- Hiển thị FPS và Tên tác giả
 local fpsLabel = Instance.new("TextLabel")
@@ -90,8 +88,8 @@ local function createMenu()
     enterButton.MouseButton1Click:Connect(function()
         if passwordBox.Text == "123" then
             menuVisible = true
-            menuFrame.Visible = true
-            -- Animation hiệu ứng
+            menuFrame.Visible = true  -- Hiển thị menu sau khi nhập mật khẩu đúng
+            -- Animation bật menu
             TweenService:Create(menuFrame, TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {Position = UDim2.new(1, -220, 0, 10)}):Play()
         else
             print("Mật khẩu sai!")
@@ -107,7 +105,8 @@ local function createMenu()
     autoFarmButton.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
     autoFarmButton.MouseButton1Click:Connect(function()
         print("Auto Farm started!")
-        -- Thêm mã Auto Farm vào đây khi nhấn nút Auto Farm
+        -- Gọi hàm Auto Farm
+        startAutoFarm()
     end)
 
     -- Thêm nút tắt hiển thị FPS
@@ -120,59 +119,66 @@ local function createMenu()
     
     toggleFPSButton.MouseButton1Click:Connect(function()
         showFPS = not showFPS
-        if showFPS then
-            fpsLabel.Text = "FPS: " .. fps
-        else
-            fpsLabel.Text = ""
-        end
+        updateFPS()  -- Cập nhật lại FPS khi thay đổi trạng thái
+    end)
+
+    -- Nút đóng menu
+    local closeButton = Instance.new("TextButton")
+    closeButton.Parent = menuFrame
+    closeButton.Text = "Close"
+    closeButton.Size = UDim2.new(0, 180, 0, 30)
+    closeButton.Position = UDim2.new(0, 10, 0, 210)
+    closeButton.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+    
+    closeButton.MouseButton1Click:Connect(function()
+        menuVisible = false
+        menuFrame.Visible = false  -- Ẩn menu khi đóng
     end)
 end
 
--- Tạo nút để bật/ tắt menu
+-- Nút bật menu cho mobile
 local toggleMenuButton = Instance.new("TextButton")
 toggleMenuButton.Parent = screenGui
-toggleMenuButton.Text = "Open Menu"
-toggleMenuButton.Size = UDim2.new(0, 200, 0, 40)
-toggleMenuButton.Position = UDim2.new(1, -210, 1, -50)
-toggleMenuButton.AnchorPoint = Vector2.new(1, 1)
+toggleMenuButton.Text = "Show Menu"
+toggleMenuButton.Size = UDim2.new(0, 150, 0, 40)
+toggleMenuButton.Position = UDim2.new(0, 10, 1, -50)
 toggleMenuButton.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+toggleMenuButton.TextColor3 = Color3.fromRGB(255, 255, 255)
 
 toggleMenuButton.MouseButton1Click:Connect(function()
-    menuVisible = not menuVisible
     if menuVisible then
-        -- Mở menu
-        createMenu()
+        menuVisible = false
+        screenGui:FindFirstChild("MenuFrame").Visible = false
     else
-        -- Đóng menu
-        for _, obj in pairs(screenGui:GetChildren()) do
-            if obj:IsA("Frame") and obj.Parent == screenGui then
-                obj.Visible = false
-            end
-        end
+        menuVisible = true
+        screenGui:FindFirstChild("MenuFrame").Visible = true
     end
 end)
 
--- Anti-ban: Hạn chế sử dụng sự kiện nhấp chuột liên tục
-local function antiBanCheck()
-    local lastClickTime = 0
-    game:GetService("UserInputService").InputBegan:Connect(function(input, gameProcessed)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-            local currentTime = tick()
-            if currentTime - lastClickTime < 0.2 then
-                -- Thực hiện hành động chống spam chuột và cảm ứng
-                return
-            end
-            lastClickTime = currentTime
+-- Chức năng Auto Farm
+local function startAutoFarm()
+    while menuVisible do
+        -- Auto nhận nhiệm vụ
+        local task = getAutoTask()
+        if task then
+            acceptTask(task)  -- Giả sử có hàm nhận nhiệm vụ
         end
-    end)
-end
+        
+        -- Auto farm (tìm quái vật hoặc tài nguyên)
+        local target = findNearestEnemy()
+        if target then
+            attack(target)
+        end
+        
+        -- Auto sử dụng bone (item hỗ trợ)
+        local bone = findBoneItem()
+        if bone then
+            useBone(bone)
+        end
+        
+        -- Anti shadow (bảo vệ khỏi bị ẩn hoặc bị giám sát)
+        if isUnderShadow() then
+            removeShadowProtection()  -- Bảo vệ khỏi bị tấn công
+        end
 
--- Chạy anti-ban
-if antiBanActive then
-    antiBanCheck()
-end
-
--- Cập nhật FPS mỗi giây
-game:GetService("RunService").Heartbeat:Connect(function()
-    updateFPS()
-end)
+        wait
