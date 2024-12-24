@@ -1,184 +1,37 @@
--- Khởi tạo dịch vụ và các đối tượng
-local TweenService = game:GetService("TweenService")
 local player = game.Players.LocalPlayer
 local character = player.Character or player.CharacterAdded:Wait()
 local humanoid = character:WaitForChild("Humanoid")
 local rootPart = character:WaitForChild("HumanoidRootPart")
-local backpack = player:WaitForChild("Backpack")
-local leaderstats = player:WaitForChild("leaderstats")
-local screenGui = Instance.new("ScreenGui")
-screenGui.Parent = player.PlayerGui
-local espActive = false
-local menuVisible = false
-local showFPS = true  -- Biến kiểm soát hiển thị FPS
 
--- Hiển thị FPS và Tên tác giả
-local fpsLabel = Instance.new("TextLabel")
-fpsLabel.Parent = screenGui
-fpsLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-fpsLabel.Size = UDim2.new(0, 200, 0, 30)
-fpsLabel.Position = UDim2.new(1, -210, 0, 10)
-fpsLabel.AnchorPoint = Vector2.new(1, 0)
-fpsLabel.BackgroundTransparency = 1
-fpsLabel.Text = "FPS: Calculating..."
-
-local authorLabel = Instance.new("TextLabel")
-authorLabel.Parent = screenGui
-authorLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-authorLabel.Size = UDim2.new(0, 200, 0, 30)
-authorLabel.Position = UDim2.new(1, -210, 0, 40)
-authorLabel.AnchorPoint = Vector2.new(1, 0)
-authorLabel.BackgroundTransparency = 1
-authorLabel.Text = "Tác giả: bảodz"
-
--- Tính FPS
-local lastTick = tick()
-local frameCount = 0
-local fps = 0
-
-local function updateFPS()
-    frameCount = frameCount + 1
-    if tick() - lastTick >= 1 then
-        fps = frameCount
-        if showFPS then
-            fpsLabel.Text = "FPS: " .. fps
+-- Hàm giết tất cả các Titan trong game
+local function killAllTitans()
+    -- Duyệt qua tất cả các đối tượng trong Workspace
+    for _, object in pairs(game.Workspace:GetChildren()) do
+        -- Kiểm tra nếu đối tượng là Titan (có thể kiểm tra tên hoặc loại đối tượng)
+        if object:IsA("Model") and object:FindFirstChild("Humanoid") then
+            local humanoid = object:FindFirstChild("Humanoid")
+            -- Kiểm tra nếu đối tượng có tên là Titan (có thể thay đổi tên tùy thuộc vào game)
+            if object.Name:match("Titan") or object.Name:match("Eren") then
+                -- Giảm sức khỏe Titan xuống 0, làm cho Titan chết ngay lập tức
+                humanoid.Health = 0
+                print(object.Name .. " đã bị giết!")
+            end
         end
-        lastTick = tick()
-        frameCount = 0
     end
 end
 
--- Hàm tạo menu
-local function createMenu()
-    local menuFrame = Instance.new("Frame")
-    menuFrame.Parent = screenGui
-    menuFrame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-    menuFrame.BackgroundTransparency = 0.5
-    menuFrame.Size = UDim2.new(0, 200, 0, 500)
-    menuFrame.Position = UDim2.new(1, -220, 0, 10)
-    menuFrame.AnchorPoint = Vector2.new(1, 0)
-    menuFrame.Visible = false -- Menu sẽ không hiển thị mặc định
+-- Kiểm tra khi người chơi nhấn chuột trái để giết tất cả Titan
+game:GetService("UserInputService").InputBegan:Connect(function(input, gameProcessed)
+    if gameProcessed then return end
 
-    -- Mật khẩu
-    local passwordLabel = Instance.new("TextLabel")
-    passwordLabel.Parent = menuFrame
-    passwordLabel.Text = "Nhập mật khẩu để mở menu:"
-    passwordLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-    passwordLabel.Size = UDim2.new(0, 180, 0, 30)
-    passwordLabel.Position = UDim2.new(0, 10, 0, 10)
-
-    local passwordBox = Instance.new("TextBox")
-    passwordBox.Parent = menuFrame
-    passwordBox.Size = UDim2.new(0, 180, 0, 30)
-    passwordBox.Position = UDim2.new(0, 10, 0, 50)
-    passwordBox.Text = ""
-    passwordBox.PlaceholderText = "Nhập mật khẩu"
-    passwordBox.TextColor3 = Color3.fromRGB(255, 255, 255)
-    passwordBox.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-
-    local enterButton = Instance.new("TextButton")
-    enterButton.Parent = menuFrame
-    enterButton.Text = "Enter"
-    enterButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-    enterButton.Size = UDim2.new(0, 180, 0, 30)
-    enterButton.Position = UDim2.new(0, 10, 0, 90)
-    enterButton.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-
-    -- Mã nút Enter
-    enterButton.MouseButton1Click:Connect(function()
-        if passwordBox.Text == "123" then
-            menuVisible = true
-            menuFrame.Visible = true  -- Hiển thị menu sau khi nhập mật khẩu đúng
-            -- Animation bật menu
-            TweenService:Create(menuFrame, TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {Position = UDim2.new(1, -220, 0, 10)}):Play()
-        else
-            print("Mật khẩu sai!")
-        end
-    end)
-
-    -- Thêm nút Auto Farm
-    local autoFarmButton = Instance.new("TextButton")
-    autoFarmButton.Parent = menuFrame
-    autoFarmButton.Text = "Auto Farm"
-    autoFarmButton.Size = UDim2.new(0, 180, 0, 30)
-    autoFarmButton.Position = UDim2.new(0, 10, 0, 130)
-    autoFarmButton.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-    autoFarmButton.MouseButton1Click:Connect(function()
-        print("Auto Farm started!")
-        -- Gọi hàm Auto Farm
-        startAutoFarm()
-    end)
-
-    -- Thêm nút tắt hiển thị FPS
-    local toggleFPSButton = Instance.new("TextButton")
-    toggleFPSButton.Parent = menuFrame
-    toggleFPSButton.Text = "Toggle FPS"
-    toggleFPSButton.Size = UDim2.new(0, 180, 0, 30)
-    toggleFPSButton.Position = UDim2.new(0, 10, 0, 170)
-    toggleFPSButton.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-    
-    toggleFPSButton.MouseButton1Click:Connect(function()
-        showFPS = not showFPS
-        updateFPS()  -- Cập nhật lại FPS khi thay đổi trạng thái
-    end)
-
-    -- Nút đóng menu
-    local closeButton = Instance.new("TextButton")
-    closeButton.Parent = menuFrame
-    closeButton.Text = "Close"
-    closeButton.Size = UDim2.new(0, 180, 0, 30)
-    closeButton.Position = UDim2.new(0, 10, 0, 210)
-    closeButton.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-    
-    closeButton.MouseButton1Click:Connect(function()
-        menuVisible = false
-        menuFrame.Visible = false  -- Ẩn menu khi đóng
-    end)
-end
-
--- Nút bật menu cho mobile
-local toggleMenuButton = Instance.new("TextButton")
-toggleMenuButton.Parent = screenGui
-toggleMenuButton.Text = "Show Menu"
-toggleMenuButton.Size = UDim2.new(0, 150, 0, 40)
-toggleMenuButton.Position = UDim2.new(0, 10, 1, -50)
-toggleMenuButton.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-toggleMenuButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-
-toggleMenuButton.MouseButton1Click:Connect(function()
-    if menuVisible then
-        menuVisible = false
-        screenGui:FindFirstChild("MenuFrame").Visible = false
-    else
-        menuVisible = true
-        screenGui:FindFirstChild("MenuFrame").Visible = true
+    -- Nếu người chơi nhấn chuột trái, gọi hàm killAllTitans
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        killAllTitans()
     end
 end)
 
--- Chức năng Auto Farm
-local function startAutoFarm()
-    while menuVisible do
-        -- Auto nhận nhiệm vụ
-        local task = getAutoTask()
-        if task then
-            acceptTask(task)  -- Giả sử có hàm nhận nhiệm vụ
-        end
-        
-        -- Auto farm (tìm quái vật hoặc tài nguyên)
-        local target = findNearestEnemy()
-        if target then
-            attack(target)
-        end
-        
-        -- Auto sử dụng bone (item hỗ trợ)
-        local bone = findBoneItem()
-        if bone then
-            useBone(bone)
-        end
-        
-        -- Anti shadow (bảo vệ khỏi bị ẩn hoặc bị giám sát)
-        if isUnderShadow() then
-            removeShadowProtection()  -- Bảo vệ khỏi bị tấn công
-        end
-
-        wait
+-- Hoặc tự động giết Titan sau một khoảng thời gian (ví dụ: mỗi giây)
+while true do
+    wait(1)
+    killAllTitans()
+end
