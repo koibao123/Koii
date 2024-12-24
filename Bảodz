@@ -1,0 +1,84 @@
+local player = game.Players.LocalPlayer
+local char = player.Character or player.CharacterAdded:Wait()
+local humanoid = char:WaitForChild("Humanoid")
+local rs = game:GetService("RunService")
+local TeleportService = game:GetService("TeleportService")
+local fruitLocations = {}  -- Bảng chứa các vị trí quả Fruit
+
+-- Tạo độ trễ ngẫu nhiên
+function randomWait(min, max)
+    local waitTime = math.random(min, max) / 10
+    wait(waitTime)
+end
+
+-- Kiểm tra xem vị trí quả Fruit có hợp lệ không
+function isFruitValid(fruit)
+    return fruit and fruit.Parent and fruit:IsA("Part")
+end
+
+-- Hàm tìm kiếm quả Fruit
+function findFruit()
+    fruitLocations = {}  -- Làm sạch danh sách mỗi lần gọi hàm
+    for _, item in pairs(workspace:GetChildren()) do
+        if item.Name == "Fruit" and isFruitValid(item) then
+            table.insert(fruitLocations, item.Position)
+        end
+    end
+end
+
+-- Di chuyển đến quả Fruit với quỹ đạo ngẫu nhiên
+function moveToFruit(fruitPosition)
+    local targetPosition = Vector3.new(
+        fruitPosition.X + math.random(-5, 5),  -- Di chuyển ngẫu nhiên
+        fruitPosition.Y,
+        fruitPosition.Z + math.random(-5, 5)   -- Thêm một chút ngẫu nhiên vào quỹ đạo di chuyển
+    )
+    humanoid:MoveTo(targetPosition)  -- Di chuyển đến vị trí ngẫu nhiên xung quanh quả Fruit
+    humanoid.MoveToFinished:Wait()  -- Đợi cho đến khi nhân vật đến nơi
+end
+
+-- Hàm thu thập quả Fruit
+function collectFruit()
+    findFruit()
+    for _, location in ipairs(fruitLocations) do
+        moveToFruit(location)
+        -- Kiểm tra ClickDetector trước khi click
+        for _, fruit in pairs(workspace:GetChildren()) do
+            if fruit.Name == "Fruit" and fruit:FindFirstChild("ClickDetector") then
+                fireclickdetector(fruit.ClickDetector)  -- Thu thập quả nếu có ClickDetector
+            end
+        end
+    end
+end
+
+-- Hàm đổi server tự động
+function teleportToNewServer()
+    local placeID = game.PlaceId
+    TeleportService:Teleport(placeID, player)  -- Chuyển đến một server mới trong trò chơi
+end
+
+-- Thực hiện hành động với độ trễ ngẫu nhiên, tránh lặp lại quá nhiều
+function performActionWithDelay()
+    collectFruit()
+    randomWait(5, 10)  -- Đợi giữa các lần thu thập
+    teleportToNewServer()
+    randomWait(10, 20)  -- Đợi giữa các lần đổi server
+end
+
+-- Ngẫu nhiên thay đổi hành động để tránh lặp lại quá nhiều
+function randomAction()
+    local actionChoice = math.random(1, 3)
+    if actionChoice == 1 then
+        collectFruit()
+    elseif actionChoice == 2 then
+        randomWait(5, 10)  -- Đôi khi chỉ đứng im hoặc di chuyển xung quanh
+    elseif actionChoice == 3 then
+        teleportToNewServer()
+    end
+end
+
+-- Chạy liên tục với độ trễ ngẫu nhiên, thay đổi thứ tự hành động
+while true do
+    randomAction()  -- Chọn một hành động ngẫu nhiên để thực hiện
+    randomWait(5, 15)  -- Thêm độ trễ ngẫu nhiên giữa các hành động
+end
