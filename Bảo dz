@@ -1,0 +1,157 @@
+-- Khởi tạo dịch vụ và các đối tượng
+local TweenService = game:GetService("TweenService")
+local player = game.Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoid = character:WaitForChild("Humanoid")
+local rootPart = character:WaitForChild("HumanoidRootPart")
+local backpack = player:WaitForChild("Backpack")
+local leaderstats = player:WaitForChild("leaderstats")
+local screenGui = Instance.new("ScreenGui")
+screenGui.Parent = player.PlayerGui
+
+-- Biến kiểm soát hiển thị FPS và menu
+local showFPS = true
+local menuVisible = false
+local antiBanActive = true -- Kích hoạt tính năng chống cấm
+
+-- Hiển thị FPS và Tên tác giả
+local fpsLabel = Instance.new("TextLabel")
+fpsLabel.Parent = screenGui
+fpsLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+fpsLabel.Size = UDim2.new(0, 200, 0, 30)
+fpsLabel.Position = UDim2.new(1, -210, 0, 10)
+fpsLabel.AnchorPoint = Vector2.new(1, 0)
+fpsLabel.BackgroundTransparency = 1
+fpsLabel.Text = "FPS: Calculating..."
+
+local authorLabel = Instance.new("TextLabel")
+authorLabel.Parent = screenGui
+authorLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+authorLabel.Size = UDim2.new(0, 200, 0, 30)
+authorLabel.Position = UDim2.new(1, -210, 0, 40)
+authorLabel.AnchorPoint = Vector2.new(1, 0)
+authorLabel.BackgroundTransparency = 1
+authorLabel.Text = "Tác giả: bảodz"
+
+-- Tính FPS
+local lastTick = tick()
+local frameCount = 0
+local fps = 0
+
+local function updateFPS()
+    frameCount = frameCount + 1
+    if tick() - lastTick >= 1 then
+        fps = frameCount
+        if showFPS then
+            fpsLabel.Text = "FPS: " .. fps
+        end
+        lastTick = tick()
+        frameCount = 0
+    end
+end
+
+-- Hàm tạo menu
+local function createMenu()
+    local menuFrame = Instance.new("Frame")
+    menuFrame.Parent = screenGui
+    menuFrame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+    menuFrame.BackgroundTransparency = 0.5
+    menuFrame.Size = UDim2.new(0, 200, 0, 500)
+    menuFrame.Position = UDim2.new(1, -220, 0, 10)
+    menuFrame.AnchorPoint = Vector2.new(1, 0)
+    menuFrame.Visible = false -- Menu sẽ không hiển thị mặc định
+
+    -- Mật khẩu
+    local passwordLabel = Instance.new("TextLabel")
+    passwordLabel.Parent = menuFrame
+    passwordLabel.Text = "Nhập mật khẩu để mở menu:"
+    passwordLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+    passwordLabel.Size = UDim2.new(0, 180, 0, 30)
+    passwordLabel.Position = UDim2.new(0, 10, 0, 10)
+
+    local passwordBox = Instance.new("TextBox")
+    passwordBox.Parent = menuFrame
+    passwordBox.Size = UDim2.new(0, 180, 0, 30)
+    passwordBox.Position = UDim2.new(0, 10, 0, 50)
+    passwordBox.Text = ""
+    passwordBox.PlaceholderText = "Nhập mật khẩu"
+    passwordBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+    passwordBox.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+
+    local enterButton = Instance.new("TextButton")
+    enterButton.Parent = menuFrame
+    enterButton.Text = "Enter"
+    enterButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+    enterButton.Size = UDim2.new(0, 180, 0, 30)
+    enterButton.Position = UDim2.new(0, 10, 0, 90)
+    enterButton.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+
+    -- Mã nút Enter
+    enterButton.MouseButton1Click:Connect(function()
+        if passwordBox.Text == "123" then
+            menuVisible = true
+            menuFrame.Visible = true
+            -- Animation hiệu ứng
+            TweenService:Create(menuFrame, TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {Position = UDim2.new(1, -220, 0, 10)}):Play()
+        else
+            print("Mật khẩu sai!")
+        end
+    end)
+
+    -- Thêm nút Auto Farm
+    local autoFarmButton = Instance.new("TextButton")
+    autoFarmButton.Parent = menuFrame
+    autoFarmButton.Text = "Auto Farm"
+    autoFarmButton.Size = UDim2.new(0, 180, 0, 30)
+    autoFarmButton.Position = UDim2.new(0, 10, 0, 130)
+    autoFarmButton.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+    autoFarmButton.MouseButton1Click:Connect(function()
+        print("Auto Farm started!")
+        -- Thêm mã Auto Farm vào đây khi nhấn nút Auto Farm
+    end)
+
+    -- Thêm nút tắt hiển thị FPS
+    local toggleFPSButton = Instance.new("TextButton")
+    toggleFPSButton.Parent = menuFrame
+    toggleFPSButton.Text = "Toggle FPS"
+    toggleFPSButton.Size = UDim2.new(0, 180, 0, 30)
+    toggleFPSButton.Position = UDim2.new(0, 10, 0, 170)
+    toggleFPSButton.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+    
+    toggleFPSButton.MouseButton1Click:Connect(function()
+        showFPS = not showFPS
+        if showFPS then
+            fpsLabel.Text = "FPS: " .. fps
+        else
+            fpsLabel.Text = ""
+        end
+    end)
+end
+
+-- Anti-ban: Hạn chế sử dụng sự kiện nhấp chuột liên tục
+local function antiBanCheck()
+    local lastClickTime = 0
+    game:GetService("UserInputService").InputBegan:Connect(function(input, gameProcessed)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            local currentTime = tick()
+            if currentTime - lastClickTime < 0.2 then
+                -- Thực hiện hành động chống spam chuột
+                return
+            end
+            lastClickTime = currentTime
+        end
+    end)
+end
+
+-- Gọi hàm tạo menu
+createMenu()
+
+-- Chạy anti-ban
+if antiBanActive then
+    antiBanCheck()
+end
+
+-- Cập nhật FPS mỗi giây
+game:GetService("RunService").Heartbeat:Connect(function()
+    updateFPS()
+end)
