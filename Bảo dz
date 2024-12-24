@@ -132,10 +132,10 @@ end
 local function antiBanCheck()
     local lastClickTime = 0
     game:GetService("UserInputService").InputBegan:Connect(function(input, gameProcessed)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
             local currentTime = tick()
             if currentTime - lastClickTime < 0.2 then
-                -- Thực hiện hành động chống spam chuột
+                -- Thực hiện hành động chống spam chuột và cảm ứng
                 return
             end
             lastClickTime = currentTime
