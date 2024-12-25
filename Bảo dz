@@ -1,37 +1,113 @@
 local player = game.Players.LocalPlayer
-local character = player.Character or player.CharacterAdded:Wait()
-local humanoid = character:WaitForChild("Humanoid")
-local rootPart = character:WaitForChild("HumanoidRootPart")
+local char = player.Character or player.CharacterAdded:Wait()
+local humanoid = char:WaitForChild("Humanoid")
+local rs = game:GetService("RunService")
+local TeleportService = game:GetService("TeleportService")
+local fruitLocations = {}  -- Bảng chứa các vị trí quả Fruit
 
--- Hàm giết tất cả các Titan trong game
-local function killAllTitans()
-    -- Duyệt qua tất cả các đối tượng trong Workspace
-    for _, object in pairs(game.Workspace:GetChildren()) do
-        -- Kiểm tra nếu đối tượng là Titan (có thể kiểm tra tên hoặc loại đối tượng)
-        if object:IsA("Model") and object:FindFirstChild("Humanoid") then
-            local humanoid = object:FindFirstChild("Humanoid")
-            -- Kiểm tra nếu đối tượng có tên là Titan (có thể thay đổi tên tùy thuộc vào game)
-            if object.Name:match("Titan") or object.Name:match("Eren") then
-                -- Giảm sức khỏe Titan xuống 0, làm cho Titan chết ngay lập tức
-                humanoid.Health = 0
-                print(object.Name .. " đã bị giết!")
+-- Tạo độ trễ ngẫu nhiên
+function randomWait(min, max)
+    local waitTime = math.random(min, max) / 10
+    wait(waitTime)
+end
+
+-- Kiểm tra xem vị trí quả Fruit có hợp lệ không
+function isFruitValid(fruit)
+    return fruit and fruit.Parent and fruit:IsA("Part")
+end
+
+-- Hàm tìm kiếm quả Fruit
+function findFruit()
+    fruitLocations = {}  -- Làm sạch danh sách mỗi lần gọi hàm
+    for _, item in pairs(workspace:GetChildren()) do
+        if item.Name == "Fruit" and isFruitValid(item) then
+            table.insert(fruitLocations, item.Position)
+        end
+    end
+end
+
+-- Di chuyển đến quả Fruit với quỹ đạo ngẫu nhiên
+function moveToFruit(fruitPosition)
+    local targetPosition = Vector3.new(
+        fruitPosition.X + math.random(-5, 5),  -- Di chuyển ngẫu nhiên
+        fruitPosition.Y,
+        fruitPosition.Z + math.random(-5, 5)   -- Thêm một chút ngẫu nhiên vào quỹ đạo di chuyển
+    )
+    humanoid:MoveTo(targetPosition)  -- Di chuyển đến vị trí ngẫu nhiên xung quanh quả Fruit
+    humanoid.MoveToFinished:Wait()  -- Đợi cho đến khi nhân vật đến nơi
+end
+
+-- Hàm thu thập quả Fruit và cất vào Inventory
+function collectFruit()
+    findFruit()
+    for _, location in ipairs(fruitLocations) do
+        moveToFruit(location)
+        -- Kiểm tra ClickDetector trước khi click
+        for _, fruit in pairs(workspace:GetChildren()) do
+            if fruit.Name == "Fruit" and fruit:FindFirstChild("ClickDetector") then
+                -- Tự động click quả để nhặt và cất vào kho đồ
+                fireclickdetector(fruit.ClickDetector)  -- Thu thập quả nếu có ClickDetector
+                -- Quả sẽ tự động được cất vào Inventory sau khi nhặt
             end
         end
     end
 end
 
--- Kiểm tra khi người chơi nhấn chuột trái để giết tất cả Titan
-game:GetService("UserInputService").InputBegan:Connect(function(input, gameProcessed)
-    if gameProcessed then return end
+-- Hàm đổi server tự động
+function teleportToNewServer()
+    local placeID = game.PlaceId
+    TeleportService:Teleport(placeID, player)  -- Chuyển đến một server mới trong trò chơi
+end
 
-    -- Nếu người chơi nhấn chuột trái, gọi hàm killAllTitans
-    if input.UserInputType == Enum.UserInputType.MouseButton1 then
-        killAllTitans()
+-- Kiểm tra có người chơi nào khác gần không (để tránh bị phát hiện)
+function checkNearbyPlayers()
+    for _, otherPlayer in pairs(game.Players:GetPlayers()) do
+        if otherPlayer ~= player and (otherPlayer.Character and (otherPlayer.Character:FindFirstChild("HumanoidRootPart"))) then
+            local distance = (char.HumanoidRootPart.Position - otherPlayer.Character.HumanoidRootPart.Position).Magnitude
+            if distance < 20 then  -- Nếu có người chơi khác gần (dưới 20 studs), ngừng hành động
+                return true
+            end
+        end
     end
-end)
+    return false
+end
 
--- Hoặc tự động giết Titan sau một khoảng thời gian (ví dụ: mỗi giây)
+-- Thực hiện hành động với độ trễ ngẫu nhiên, tránh lặp lại quá nhiều
+function performActionWithDelay()
+    if not checkNearbyPlayers() then  -- Kiểm tra nếu có người chơi gần thì không thực hiện hành động
+        collectFruit()
+        randomWait(5, 10)  -- Đợi giữa các lần thu thập
+        teleportToNewServer()
+        randomWait(10, 20)  -- Đợi giữa các lần đổi server
+    else
+        randomWait(10, 20)  -- Nếu có người chơi gần, chỉ đợi một lúc rồi thử lại
+    end
+end
+
+-- Ngẫu nhiên thay đổi hành động để tránh lặp lại quá nhiều
+function randomAction()
+    local actionChoice = math.random(1, 3)
+    if actionChoice == 1 then
+        collectFruit()
+    elseif actionChoice == 2 then
+        randomWait(5, 10)  -- Đôi khi chỉ đứng im hoặc di chuyển xung quanh
+    elseif actionChoice == 3 then
+        teleportToNewServer()
+    end
+end
+
+-- Tự động chọn phe Hải quân (nếu có)
+function autoSelectMarineFaction()
+    -- Giả sử là có một NPC hoặc một khu vực trong game cho phép người chơi chọn phe
+    local marineSelectionButton = game.Workspace:FindFirstChild("MarineFactionButton") -- Thay "MarineFactionButton" bằng tên thực tế trong game
+    if marineSelectionButton and marineSelectionButton:FindFirstChild("ClickDetector") then
+        fireclickdetector(marineSelectionButton.ClickDetector)  -- Tự động click vào nút chọn phe Hải quân
+    end
+end
+
+-- Chạy liên tục với độ trễ ngẫu nhiên, thay đổi thứ tự hành động
 while true do
-    wait(1)
-    killAllTitans()
+    randomAction()  -- Chọn một hành động ngẫu nhiên để thực hiện
+    autoSelectMarineFaction()  -- Thêm chức năng chọn phe Hải quân
+    randomWait(5, 15)  -- Thêm độ trễ ngẫu nhiên giữa các hành động
 end
